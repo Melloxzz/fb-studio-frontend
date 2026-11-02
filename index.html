@@ -41,6 +41,8 @@
       background-color: #27272a;
     }
   </style>
+  <!-- Adicionar dentro do <head> do seu index.html -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col justify-between">
 
@@ -214,9 +216,18 @@
   </footer>
 
   <script>
-    const API_URL = 'http://localhost:3000/api';
+    <!-- Script da lógica integrada com Supabase e WhatsApp -->
+  <script>
+    // 1. Cole aqui a Project URL e a chave anon pública do seu painel do Supabase
+    const SUPABASE_URL = 'https://SUA_PROJECT_URL_AQUI.supabase.co';
+    const SUPABASE_ANON_KEY = 'SUA_CHAVE_ANON_AQUI';
+    
+    // Inicializa o cliente do Supabase
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
     const WHATSAPP_NUMBER = '5565993529203';
 
+    // Inicialização ao carregar a página
     document.addEventListener('DOMContentLoaded', () => {
       const today = new Date().toISOString().split('T')[0];
       const dateInput = document.getElementById('bookingDate');
@@ -226,6 +237,7 @@
       calculateTotal();
     });
 
+    // Calcula o total dos serviços selecionados
     function calculateTotal() {
       const checkboxes = document.querySelectorAll('input[name="service"]:checked');
       let total = 0;
@@ -235,6 +247,7 @@
       document.getElementById('totalDisplay').textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
     }
 
+    // Consulta os agendamentos ocupados diretamente no Supabase
     async function updateAvailableTimes() {
       const dateInput = document.getElementById('bookingDate').value;
       const barberInput = document.getElementById('barber').value;
@@ -248,8 +261,8 @@
 
       if (dayOfWeek === 0) {
         const option = document.createElement('option');
-        option.value = "";
-        option.textContent = "Fechado aos Domingos";
+        option.value = '';
+        option.textContent = 'Fechado aos Domingos';
         timeSelect.appendChild(option);
         return;
       }
@@ -259,15 +272,19 @@
         : ["13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00"];
 
       const defaultOption = document.createElement('option');
-      defaultOption.value = "";
-      defaultOption.textContent = "Selecione o horário...";
+      defaultOption.value = '';
+      defaultOption.textContent = 'Selecione o horário...';
       timeSelect.appendChild(defaultOption);
 
       try {
-        const response = await fetch(`${API_URL}/agendamentos/ocupados?data=${dateInput}`);
-        let occupiedSlots = [];
-        if (response.ok) {
-          occupiedSlots = await response.json();
+        // Busca na tabela 'agendamentos' do Supabase para o dia escolhido
+        const { data: occupiedSlots, error } = await supabase
+          .from('agendamentos')
+          .select('horario, barbeiro')
+          .eq('data', dateInput);
+
+        if (error) {
+          console.warn('Erro ao consultar Supabase, exibindo horários livres padrão:', error);
         }
 
         times.forEach(time => {
@@ -277,7 +294,7 @@
           );
 
           if (isBooked) {
-            option.value = "";
+            option.value = '';
             option.textContent = `${time}h (Indisponível)`;
             option.disabled = true;
           } else {
@@ -286,7 +303,8 @@
           }
           timeSelect.appendChild(option);
         });
-      } catch (error) {
+      } catch (err) {
+        console.error('Falha de conexão com o banco de dados:', err);
         times.forEach(time => {
           const option = document.createElement('option');
           option.value = time;
@@ -296,7 +314,7 @@
       }
     }
 
-    // Redireciona para o WhatsApp com a mensagem formatada
+    // Monta o texto e abre o WhatsApp com a mensagem formatada
     function redirectToWhatsApp(name, barber, date, time, total, selectedServices) {
       const [year, month, day] = date.split('-');
       const formattedDate = `${day}/${month}/${year}`;
@@ -321,6 +339,7 @@ ${servicesText}
       window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`, '_blank');
     }
 
+    // Salva o registro no Supabase e aciona o redirecionamento
     async function handleBooking(event) {
       event.preventDefault();
 
@@ -339,35 +358,41 @@ ${servicesText}
       });
 
       if (selectedServices.length === 0) {
-        alert("Por favor, selecione pelo menos um serviço.");
+        alert('Por favor, selecione pelo menos um serviço.');
         return;
       }
 
       if (!time) {
-        alert("Por favor, selecione um horário disponível.");
+        alert('Por favor, selecione um horário disponível.');
         return;
       }
 
-      // Tenta gravar no backend local; se não estiver ativo, redireciona mesmo assim
       try {
-        await fetch(`${API_URL}/agendamentos`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            cliente_nome: name,
-            barbeiro: barber,
-            data: date,
-            horario: time,
-            valor_total: total,
-            servicos: selectedServices
-          })
-        });
+        // Insere a linha na tabela 'agendamentos' do Supabase
+        const { error } = await supabase
+          .from('agendamentos')
+          .insert([
+            {
+              cliente_nome: name,
+              barbeiro: barber,
+              data: date,
+              horario: time,
+              valor_total: total,
+              servicos: selectedServices
+            }
+          ]);
+
+        if (error) {
+          console.error('Erro ao salvar no Supabase:', error);
+        }
       } catch (err) {
-        console.warn('Backend indisponível, prosseguindo com WhatsApp diretamente.');
+        console.warn('Erro de rede com o banco de dados:', err);
       }
 
+      // Redireciona para o WhatsApp independentemente de instabilidades de rede
       redirectToWhatsApp(name, barber, date, time, total, selectedServices);
     }
+  </script>
   </script>
 
 </body>
