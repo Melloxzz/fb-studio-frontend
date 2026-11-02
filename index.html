@@ -216,11 +216,13 @@
   </footer>
 
   <!-- Script da lógica integrada com Supabase e WhatsApp -->
+ <!-- Script da lógica integrada com Supabase e WhatsApp -->
   <script>
     const SUPABASE_URL = 'https://smpdgiyptxpwsgpzsvqn.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_kb6XJNh2Tv_lv9CMrb9ejw_3H66WzeG';
     
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // CORREÇÃO: Usar supabaseClient para não colidir com o supabase do CDN
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     const WHATSAPP_NUMBER = '5565993529203';
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -270,7 +272,8 @@
       timeSelect.appendChild(defaultOption);
 
       try {
-        const { data: occupiedSlots, error } = await supabase
+        // CORREÇÃO: Consulta usando supabaseClient
+        const { data: occupiedSlots, error } = await supabaseClient
           .from('agendamentos')
           .select('horario, barbeiro')
           .eq('data', dateInput);
@@ -353,7 +356,8 @@ ${servicesText}
       }
 
       try {
-        await supabase
+        // CORREÇÃO: Inserção usando supabaseClient
+        await supabaseClient
           .from('agendamentos')
           .insert([
             {
