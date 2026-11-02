@@ -206,7 +206,7 @@
         <span>Confirmar Agendamento</span>
       </button>
 
-    </form>
+</form>
 
   </main>
 
@@ -215,19 +215,14 @@
     <p>© 2026 FB Studio Barber. Todos os direitos reservados.</p>
   </footer>
 
+  <!-- Script da lógica integrada com Supabase e WhatsApp -->
   <script>
-    <!-- Script da lógica integrada com Supabase e WhatsApp -->
-  <script>
-    // 1. Cole aqui a Project URL e a chave anon pública do seu painel do Supabase
     const SUPABASE_URL = 'https://smpdgiyptxpwsgpzsvqn.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_kb6XJNh2Tv_lv9CMrb9ejw_3H66WzeG';
     
-    // Inicializa o cliente do Supabase
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
     const WHATSAPP_NUMBER = '5565993529203';
 
-    // Inicialização ao carregar a página
     document.addEventListener('DOMContentLoaded', () => {
       const today = new Date().toISOString().split('T')[0];
       const dateInput = document.getElementById('bookingDate');
@@ -237,7 +232,6 @@
       calculateTotal();
     });
 
-    // Calcula o total dos serviços selecionados
     function calculateTotal() {
       const checkboxes = document.querySelectorAll('input[name="service"]:checked');
       let total = 0;
@@ -247,7 +241,6 @@
       document.getElementById('totalDisplay').textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
     }
 
-    // Consulta os agendamentos ocupados diretamente no Supabase
     async function updateAvailableTimes() {
       const dateInput = document.getElementById('bookingDate').value;
       const barberInput = document.getElementById('barber').value;
@@ -277,15 +270,10 @@
       timeSelect.appendChild(defaultOption);
 
       try {
-        // Busca na tabela 'agendamentos' do Supabase para o dia escolhido
         const { data: occupiedSlots, error } = await supabase
           .from('agendamentos')
           .select('horario, barbeiro')
           .eq('data', dateInput);
-
-        if (error) {
-          console.warn('Erro ao consultar Supabase, exibindo horários livres padrão:', error);
-        }
 
         times.forEach(time => {
           const option = document.createElement('option');
@@ -304,7 +292,6 @@
           timeSelect.appendChild(option);
         });
       } catch (err) {
-        console.error('Falha de conexão com o banco de dados:', err);
         times.forEach(time => {
           const option = document.createElement('option');
           option.value = time;
@@ -314,7 +301,6 @@
       }
     }
 
-    // Monta o texto e abre o WhatsApp com a mensagem formatada
     function redirectToWhatsApp(name, barber, date, time, total, selectedServices) {
       const [year, month, day] = date.split('-');
       const formattedDate = `${day}/${month}/${year}`;
@@ -339,7 +325,6 @@ ${servicesText}
       window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`, '_blank');
     }
 
-    // Salva o registro no Supabase e aciona o redirecionamento
     async function handleBooking(event) {
       event.preventDefault();
 
@@ -368,8 +353,7 @@ ${servicesText}
       }
 
       try {
-        // Insere a linha na tabela 'agendamentos' do Supabase
-        const { error } = await supabase
+        await supabase
           .from('agendamentos')
           .insert([
             {
@@ -381,19 +365,12 @@ ${servicesText}
               servicos: selectedServices
             }
           ]);
-
-        if (error) {
-          console.error('Erro ao salvar no Supabase:', error);
-        }
       } catch (err) {
-        console.warn('Erro de rede com o banco de dados:', err);
+        console.warn('Falha na gravação:', err);
       }
 
-      // Redireciona para o WhatsApp independentemente de instabilidades de rede
       redirectToWhatsApp(name, barber, date, time, total, selectedServices);
     }
   </script>
-  </script>
-
 </body>
 </html>
